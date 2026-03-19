@@ -1,0 +1,120 @@
+#include <Arduino.h>
+#include <WiFi.h>
+#include <SpotifyEsp32.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+// botones
+#define BTN_PLAY 32
+#define BTN_NEXT 33
+#define BTN_PREV 25
+
+char* SSID = "TU_WIFI";
+const char* PASSWORD = "TU_PASSWORD";
+
+const char* CLIENT_ID = "TU_CLIENT_ID";
+const char* CLIENT_SECRET = "TU_CLIENT_SECRET";
+
+Spotify sp(CLIENT_ID, CLIENT_SECRET);
+
+String lastTrack;
+
+void setup() {
+
+Serial.begin(115200);
+
+// iniciar botones
+pinMode(BTN_PLAY, INPUT_PULLUP);
+pinMode(BTN_NEXT, INPUT_PULLUP);
+pinMode(BTN_PREV, INPUT_PULLUP);
+
+// iniciar OLED
+Wire.begin(21,22);
+
+display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+display.clearDisplay();
+display.setTextSize(1);
+display.setTextColor(WHITE);
+
+display.setCursor(0,0);
+display.println("Connecting WiFi");
+display.display();
+
+// conectar wifi
+WiFi.begin(SSID, PASSWORD);
+
+while(WiFi.status() != WL_CONNECTED)
+{
+delay(1000);
+}
+
+display.clearDisplay();
+display.println("WiFi OK");
+display.display();
+
+// conectar spotify
+sp.begin();
+
+while(!sp.is_auth())
+{
+sp.handle_client();
+}
+
+display.clearDisplay();
+display.println("Spotify OK");
+display.display();
+
+}
+
+void loop() {
+
+// botones
+
+if(digitalRead(BTN_PLAY) == LOW)
+{
+sp.start_resume_playback();
+delay(500);
+}
+
+if(digitalRead(BTN_NEXT) == LOW)
+{
+sp.skip();
+delay(500);
+}
+
+if(digitalRead(BTN_PREV) == LOW)
+{
+sp.previous();
+delay(500);
+}
+
+// canción actual
+
+String artist = sp.current_artist_names();
+String track = sp.current_track_name();
+
+if(track != lastTrack && !track.isEmpty())
+{
+display.clearDisplay();
+
+display.setCursor(0,0);
+display.println("Now Playing:");
+
+display.println(artist);
+display.println(track);
+
+display.display();
+
+lastTrack = track;
+}
+
+delay(2000);
+
+}
+
